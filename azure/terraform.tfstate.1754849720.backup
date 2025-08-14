@@ -1,0 +1,470 @@
+{
+  "version": 4,
+  "terraform_version": "1.2.7",
+  "serial": 102,
+  "lineage": "e1e7585d-028b-f5af-aff1-a2c2122de172",
+  "outputs": {},
+  "resources": [
+    {
+      "mode": "data",
+      "type": "azurerm_platform_image",
+      "name": "openwebui",
+      "provider": "provider[\"registry.terraform.io/hashicorp/azurerm\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "id": "/subscriptions/d59b3d1b-06c6-40e9-9838-8c0ceca6c2e5/providers/Microsoft.Compute/locations/centralus/publishers/Debian/artifactTypes/vmImage/offers/debian-11/skus/11/versions/0.20250801.2191",
+            "location": "centralus",
+            "offer": "debian-11",
+            "publisher": "Debian",
+            "sku": "11",
+            "timeouts": null,
+            "version": "0.20250801.2191"
+          },
+          "sensitive_attributes": []
+        }
+      ]
+    },
+    {
+      "mode": "data",
+      "type": "cloudinit_config",
+      "name": "config",
+      "provider": "provider[\"registry.terraform.io/hashicorp/cloudinit\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "base64_encode": true,
+            "boundary": "MIMEBOUNDARY",
+            "gzip": true,
+            "id": "1002708790",
+            "part": [
+              {
+                "content": "#!/bin/bash\n\n# Fail if one command fails\nset -e\n\n# Run the script in non-interactive mode so that the installation does not \n# prompt for input\nexport DEBIAN_FRONTEND=noninteractive\n\n# Install required packages\napt-get update\napt-get install -y ca-certificates curl sqlite3 apache2-utils\n\n# Setup Docker\n\n## Add Docker's official GPG key:\ninstall -m 0755 -d /etc/apt/keyrings\ncurl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc\nchmod a+r /etc/apt/keyrings/docker.asc\n\n## Add the repository to Apt sources:\necho \\\n  \"deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian \\\n  $(. /etc/os-release \u0026\u0026 echo \"$VERSION_CODENAME\") stable\" | \\\n  tee /etc/apt/sources.list.d/docker.list \u003e /dev/null\napt-get update\n\n## Install Docker\napt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin\n\n# Install the open_web_ui UI Server\nmkdir -p /etc/open-webui.d/\n\n## Create the default db with an intial user\n## Open WebUI uses SQLite as the default database, when first run it allows anyone to create an admin account\n## since we are runnning this in a cloud environment, we need to create an admin account before starting the server.\n## At present the only way to do this is to create the database with an admin account already created.\n\nPASSWD=$(htpasswd -bnBC 10 \"\" \"chaXBVhFyGObSqsi\" | tr -d ':\\n')\nUSER=\"admin@demo.gs\"\n\n# Start Open Web UI for the first time so that it creates the database\n/usr/bin/docker pull ghcr.io/open-webui/open-webui:ollama\n/usr/bin/docker run -d -p 80:8080 -v /etc/open-webui.d:/root/.open_web_ui -v /etc/open-webui.d:/app/backend/data --name openwebui ghcr.io/open-webui/open-webui:ollama\n\n# Wait for the server to start\ntimeout 300 bash -c 'while [[ \"$(curl -s -o /dev/null -w ''%{http_code}'' localhost)\" != \"200\" ]]; do sleep 5; done' || false\n\n# Stop the server\n/usr/bin/docker stop openwebui\n/usr/bin/docker rm openwebui\n\n# Update the database with the admin user\ncat \u003c\u003c EOF \u003e /etc/open-webui.d/webui.sql\nPRAGMA foreign_keys=OFF;\nBEGIN TRANSACTION;\nINSERT INTO auth VALUES('488af2d3-dd38-4310-a549-6d8ad11ae69e','${USER}','${PASSWD}',1);\nINSERT INTO user VALUES('488af2d3-dd38-4310-a549-6d8ad11ae69e','Admin User','${USER}','admin','data:image/png;base64,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',NULL,1719901984,1719901984,1719901984,'null','null',NULL);\nCOMMIT;\nEOF\n\nsqlite3 /etc/open-webui.d/webui.db \u003c /etc/open-webui.d/webui.sql\n\n# Cleanup\nrm -f /etc/open-webui.d/webui.sql\n\n\n# Create the environment file that will be loaded by systemd\necho \"#Environment\" \u003e /etc/open-webui.d/openwebui.env\n\n\n\n# If the GPU is enabled, then we need to install the Nvidia drivers and the\n# Nvidia Container Toolkit\n\n\n## Create the systemd unit\n## When starting systemd will load the environment file and pass the variables to the container\ncat \u003c\u003c 'EOF' \u003e /etc/systemd/system/openwebui.service\n[Unit]\nDescription=Open Web UI\nAfter=docker.service\nRequires=docker.service\n\n[Service]\nTimeoutStartSec=0\nType=simple\nRestart=always\nEnvironmentFile=/etc/open-webui.d/openwebui.env\nExecStartPre=-/usr/bin/docker stop %n\nExecStartPre=-/usr/bin/docker rm %n\nExecStart=/usr/bin/docker run -p 80:8080 $GPU_FLAG $OPENAI_KEY $OPENAI_BASE -e RAG_EMBEDDING_MODEL_AUTO_UPDATE=true -v /etc/open-webui.d:/root/.open_web_ui -v /etc/open-webui.d:/app/backend/data --name %n ghcr.io/open-webui/open-webui:ollama\n\n[Install]\nWantedBy=multi-user.target\nEOF\n\n## Reload systemd and enable the service\nsystemctl daemon-reload\nsystemctl enable openwebui.service\n\nreboot",
+                "content_type": "text/x-shellscript",
+                "filename": "init.sh",
+                "merge_type": ""
+              },
+              {
+                "content": "package_update: true\npackage_upgrade: true\nruncmd:\n  - [\"sh\", \"/var/lib/cloud/instance/scripts/init.sh\" ]",
+                "content_type": "text/cloud-config",
+                "filename": "",
+                "merge_type": ""
+              }
+            ],
+            "rendered": "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"
+          },
+          "sensitive_attributes": [
+            [
+              {
+                "type": "get_attr",
+                "value": "part"
+              },
+              {
+                "type": "index",
+                "value": {
+                  "value": 0,
+                  "type": "number"
+                }
+              },
+              {
+                "type": "get_attr",
+                "value": "content"
+              }
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "azurerm_linux_virtual_machine",
+      "name": "openwebui",
+      "provider": "provider[\"registry.terraform.io/hashicorp/azurerm\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "additional_capabilities": [],
+            "admin_password": null,
+            "admin_ssh_key": [
+              {
+                "public_key": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQCywXFgAJ8MmhiLksl6czPgAZS2zXf+RBp+5uPUq+67B55qMlkmR7mAWyZQoTzayP77n3N5eZgxoYD6CqYTyuSZ9vD3abkKSCkYEREOsaMJ58YIaW8USUlHUyFQTEvRcEilAd7gwz/4GR8dm5dchRFOX8aPPkE3xuc4i/h9NjXNwSn5Hc3iOx2nPPunqHehRaCAfPhHxtjqQ8EHblIjpQKtNqy20zoZlmzzlymhVdTu+VwieOtZmAlUYOujloBT4DdcFeVnCz3jXlNKxq8Y5AcDub5MUfU/K+qhnwq+p75AhD10LtSkWKUZET3hVVHKkcmgOsVyfC+/ITFRXyw9BvhV7myW+8bKAw9qTJo1JbRR8sM15++Oy6OVpfZmp9uxc/K/f3fv1elBDsdpCkieCEqoSgMeTrgavdUqql08joO1/5pBJ2yQT9dhQcxx050y4KZGcH/oxKc/oQyqffIJGsMeeSDWlBz6mddNE6EwSI0z4TEQ5MX9/vVrQCXmUgsAq/3jW+kyUJhDJO5JNwN+qYGRpRzQM0bsN7E0O4kelI4sMthKLlnFIhK6o898pBGZlnbimnjtAf7eAavGPoLviYeZ5hh6Nk39/aXLJNWBNQb5iBAM5aBf3QODej4agTkFxBUoWRQ4zqMe9+oMgnK7bUyCX5ZrF6WqX5KJk3aNZMhjkQ== davidgresham@MacBookPro.lan\n",
+                "username": "openwebui"
+              }
+            ],
+            "admin_username": "openwebui",
+            "allow_extension_operations": true,
+            "availability_set_id": "",
+            "boot_diagnostics": [],
+            "bypass_platform_safety_checks_on_user_schedule_enabled": false,
+            "capacity_reservation_group_id": "",
+            "computer_name": "example-machine",
+            "custom_data": "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",
+            "dedicated_host_group_id": "",
+            "dedicated_host_id": "",
+            "disable_password_authentication": true,
+            "disk_controller_type": "",
+            "edge_zone": "",
+            "encryption_at_host_enabled": false,
+            "eviction_policy": "",
+            "extensions_time_budget": "PT1H30M",
+            "gallery_application": [],
+            "id": "/subscriptions/d59b3d1b-06c6-40e9-9838-8c0ceca6c2e5/resourceGroups/example-resources/providers/Microsoft.Compute/virtualMachines/example-machine",
+            "identity": [],
+            "license_type": "",
+            "location": "centralus",
+            "max_bid_price": -1,
+            "name": "example-machine",
+            "network_interface_ids": [
+              "/subscriptions/d59b3d1b-06c6-40e9-9838-8c0ceca6c2e5/resourceGroups/example-resources/providers/Microsoft.Network/networkInterfaces/example-nic"
+            ],
+            "os_disk": [
+              {
+                "caching": "ReadWrite",
+                "diff_disk_settings": [],
+                "disk_encryption_set_id": "",
+                "disk_size_gb": 30,
+                "name": "example-machine_disk1_6d9ed43bc5ec45d2a583c424d62ce341",
+                "secure_vm_disk_encryption_set_id": "",
+                "security_encryption_type": "",
+                "storage_account_type": "Standard_LRS",
+                "write_accelerator_enabled": false
+              }
+            ],
+            "os_image_notification": [],
+            "patch_assessment_mode": "ImageDefault",
+            "patch_mode": "ImageDefault",
+            "plan": [],
+            "platform_fault_domain": -1,
+            "priority": "Regular",
+            "private_ip_address": "10.0.2.4",
+            "private_ip_addresses": [
+              "10.0.2.4"
+            ],
+            "provision_vm_agent": true,
+            "proximity_placement_group_id": "",
+            "public_ip_address": "13.89.247.168",
+            "public_ip_addresses": [
+              "13.89.247.168"
+            ],
+            "reboot_setting": "",
+            "resource_group_name": "example-resources",
+            "secret": [],
+            "secure_boot_enabled": false,
+            "size": "Standard_A2_v2",
+            "source_image_id": "",
+            "source_image_reference": [
+              {
+                "offer": "debian-11",
+                "publisher": "Debian",
+                "sku": "11",
+                "version": "0.20250801.2191"
+              }
+            ],
+            "tags": {},
+            "termination_notification": [],
+            "timeouts": null,
+            "user_data": "",
+            "virtual_machine_id": "54712c65-c434-41ea-b8e8-88b38d487677",
+            "virtual_machine_scale_set_id": "",
+            "vm_agent_platform_updates_enabled": false,
+            "vtpm_enabled": false,
+            "zone": ""
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjoyNzAwMDAwMDAwMDAwLCJkZWxldGUiOjI3MDAwMDAwMDAwMDAsInJlYWQiOjMwMDAwMDAwMDAwMCwidXBkYXRlIjoyNzAwMDAwMDAwMDAwfX0=",
+          "dependencies": [
+            "azurerm_network_interface.openwebui",
+            "azurerm_public_ip.openwebui",
+            "azurerm_resource_group.openwebui",
+            "azurerm_subnet.openwebui",
+            "azurerm_virtual_network.openwebui",
+            "data.azurerm_platform_image.openwebui",
+            "data.cloudinit_config.config",
+            "random_password.password"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "azurerm_network_interface",
+      "name": "openwebui",
+      "provider": "provider[\"registry.terraform.io/hashicorp/azurerm\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "accelerated_networking_enabled": false,
+            "applied_dns_servers": [],
+            "auxiliary_mode": "",
+            "auxiliary_sku": "",
+            "dns_servers": [],
+            "edge_zone": "",
+            "enable_accelerated_networking": false,
+            "enable_ip_forwarding": false,
+            "id": "/subscriptions/d59b3d1b-06c6-40e9-9838-8c0ceca6c2e5/resourceGroups/example-resources/providers/Microsoft.Network/networkInterfaces/example-nic",
+            "internal_dns_name_label": "",
+            "internal_domain_name_suffix": "lanrljc3lmwehktjoznsopirhc.gx.internal.cloudapp.net",
+            "ip_configuration": [
+              {
+                "gateway_load_balancer_frontend_ip_configuration_id": "",
+                "name": "internal",
+                "primary": true,
+                "private_ip_address": "10.0.2.4",
+                "private_ip_address_allocation": "Dynamic",
+                "private_ip_address_version": "IPv4",
+                "public_ip_address_id": "/subscriptions/d59b3d1b-06c6-40e9-9838-8c0ceca6c2e5/resourceGroups/example-resources/providers/Microsoft.Network/publicIPAddresses/openwebui-pip",
+                "subnet_id": "/subscriptions/d59b3d1b-06c6-40e9-9838-8c0ceca6c2e5/resourceGroups/example-resources/providers/Microsoft.Network/virtualNetworks/example-network/subnets/internal"
+              }
+            ],
+            "ip_forwarding_enabled": false,
+            "location": "centralus",
+            "mac_address": "00-0D-3A-A4-33-5C",
+            "name": "example-nic",
+            "private_ip_address": "10.0.2.4",
+            "private_ip_addresses": [
+              "10.0.2.4"
+            ],
+            "resource_group_name": "example-resources",
+            "tags": {},
+            "timeouts": null,
+            "virtual_machine_id": "/subscriptions/d59b3d1b-06c6-40e9-9838-8c0ceca6c2e5/resourceGroups/example-resources/providers/Microsoft.Compute/virtualMachines/example-machine"
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjoxODAwMDAwMDAwMDAwLCJkZWxldGUiOjE4MDAwMDAwMDAwMDAsInJlYWQiOjMwMDAwMDAwMDAwMCwidXBkYXRlIjoxODAwMDAwMDAwMDAwfX0=",
+          "dependencies": [
+            "azurerm_public_ip.openwebui",
+            "azurerm_resource_group.openwebui",
+            "azurerm_subnet.openwebui",
+            "azurerm_virtual_network.openwebui"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "azurerm_public_ip",
+      "name": "openwebui",
+      "provider": "provider[\"registry.terraform.io/hashicorp/azurerm\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "allocation_method": "Static",
+            "ddos_protection_mode": "VirtualNetworkInherited",
+            "ddos_protection_plan_id": null,
+            "domain_name_label": null,
+            "edge_zone": "",
+            "fqdn": null,
+            "id": "/subscriptions/d59b3d1b-06c6-40e9-9838-8c0ceca6c2e5/resourceGroups/example-resources/providers/Microsoft.Network/publicIPAddresses/openwebui-pip",
+            "idle_timeout_in_minutes": 4,
+            "ip_address": "13.89.247.168",
+            "ip_tags": {},
+            "ip_version": "IPv4",
+            "location": "centralus",
+            "name": "openwebui-pip",
+            "public_ip_prefix_id": null,
+            "resource_group_name": "example-resources",
+            "reverse_fqdn": null,
+            "sku": "Basic",
+            "sku_tier": "Regional",
+            "tags": {},
+            "timeouts": null,
+            "zones": []
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjoxODAwMDAwMDAwMDAwLCJkZWxldGUiOjE4MDAwMDAwMDAwMDAsInJlYWQiOjMwMDAwMDAwMDAwMCwidXBkYXRlIjoxODAwMDAwMDAwMDAwfX0=",
+          "dependencies": [
+            "azurerm_resource_group.openwebui"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "azurerm_resource_group",
+      "name": "openwebui",
+      "provider": "provider[\"registry.terraform.io/hashicorp/azurerm\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "id": "/subscriptions/d59b3d1b-06c6-40e9-9838-8c0ceca6c2e5/resourceGroups/example-resources",
+            "location": "centralus",
+            "managed_by": "",
+            "name": "example-resources",
+            "tags": {},
+            "timeouts": null
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo1NDAwMDAwMDAwMDAwLCJkZWxldGUiOjU0MDAwMDAwMDAwMDAsInJlYWQiOjMwMDAwMDAwMDAwMCwidXBkYXRlIjo1NDAwMDAwMDAwMDAwfX0="
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "azurerm_subnet",
+      "name": "openwebui",
+      "provider": "provider[\"registry.terraform.io/hashicorp/azurerm\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "address_prefixes": [
+              "10.0.2.0/24"
+            ],
+            "default_outbound_access_enabled": true,
+            "delegation": [],
+            "enforce_private_link_endpoint_network_policies": false,
+            "enforce_private_link_service_network_policies": false,
+            "id": "/subscriptions/d59b3d1b-06c6-40e9-9838-8c0ceca6c2e5/resourceGroups/example-resources/providers/Microsoft.Network/virtualNetworks/example-network/subnets/internal",
+            "name": "internal",
+            "private_endpoint_network_policies": "Enabled",
+            "private_endpoint_network_policies_enabled": true,
+            "private_link_service_network_policies_enabled": true,
+            "resource_group_name": "example-resources",
+            "service_endpoint_policy_ids": [],
+            "service_endpoints": [],
+            "timeouts": null,
+            "virtual_network_name": "example-network"
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjoxODAwMDAwMDAwMDAwLCJkZWxldGUiOjE4MDAwMDAwMDAwMDAsInJlYWQiOjMwMDAwMDAwMDAwMCwidXBkYXRlIjoxODAwMDAwMDAwMDAwfX0=",
+          "dependencies": [
+            "azurerm_resource_group.openwebui",
+            "azurerm_virtual_network.openwebui"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "azurerm_virtual_network",
+      "name": "openwebui",
+      "provider": "provider[\"registry.terraform.io/hashicorp/azurerm\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "address_space": [
+              "10.0.0.0/16"
+            ],
+            "bgp_community": "",
+            "ddos_protection_plan": [],
+            "dns_servers": [],
+            "edge_zone": "",
+            "encryption": [],
+            "flow_timeout_in_minutes": 0,
+            "guid": "a4151b58-5b5d-432c-aa69-765b273d113a",
+            "id": "/subscriptions/d59b3d1b-06c6-40e9-9838-8c0ceca6c2e5/resourceGroups/example-resources/providers/Microsoft.Network/virtualNetworks/example-network",
+            "location": "centralus",
+            "name": "example-network",
+            "resource_group_name": "example-resources",
+            "subnet": [
+              {
+                "address_prefix": "10.0.2.0/24",
+                "id": "/subscriptions/d59b3d1b-06c6-40e9-9838-8c0ceca6c2e5/resourceGroups/example-resources/providers/Microsoft.Network/virtualNetworks/example-network/subnets/internal",
+                "name": "internal",
+                "security_group": ""
+              }
+            ],
+            "tags": {},
+            "timeouts": null
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjoxODAwMDAwMDAwMDAwLCJkZWxldGUiOjE4MDAwMDAwMDAwMDAsInJlYWQiOjMwMDAwMDAwMDAwMCwidXBkYXRlIjoxODAwMDAwMDAwMDAwfX0=",
+          "dependencies": [
+            "azurerm_resource_group.openwebui"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "random_password",
+      "name": "password",
+      "provider": "provider[\"registry.terraform.io/hashicorp/random\"]",
+      "instances": [
+        {
+          "schema_version": 3,
+          "attributes": {
+            "bcrypt_hash": "$2a$10$zx1.OkTIV2psfyMbsE1bgueuGWN8iAAGOyOhHvgs4.SAP.3DFBz4C",
+            "id": "none",
+            "keepers": null,
+            "length": 16,
+            "lower": true,
+            "min_lower": 0,
+            "min_numeric": 0,
+            "min_special": 0,
+            "min_upper": 0,
+            "number": true,
+            "numeric": true,
+            "override_special": null,
+            "result": "chaXBVhFyGObSqsi",
+            "special": false,
+            "upper": true
+          },
+          "sensitive_attributes": []
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "terracurl_request",
+      "name": "openwebui",
+      "provider": "provider[\"registry.terraform.io/devops-rob/terracurl\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "ca_cert_directory": null,
+            "ca_cert_file": null,
+            "cert_file": null,
+            "destroy_ca_cert_directory": null,
+            "destroy_ca_cert_file": null,
+            "destroy_cert_file": null,
+            "destroy_headers": null,
+            "destroy_key_file": null,
+            "destroy_max_retry": null,
+            "destroy_method": null,
+            "destroy_request_body": null,
+            "destroy_response_codes": null,
+            "destroy_retry_interval": 10,
+            "destroy_skip_tls_verify": null,
+            "destroy_url": null,
+            "headers": null,
+            "id": "open_web_ui",
+            "key_file": null,
+            "max_retry": 180,
+            "method": "GET",
+            "name": "open_web_ui",
+            "request_body": null,
+            "response": "\u003c!doctype html\u003e\n\u003chtml lang=\"en\"\u003e\n\t\u003chead\u003e\n\t\t\u003cmeta charset=\"utf-8\" /\u003e\n\t\t\u003clink rel=\"icon\" type=\"image/png\" href=\"/static/favicon.png\" /\u003e\n\t\t\u003clink rel=\"icon\" type=\"image/png\" href=\"/static/favicon-96x96.png\" sizes=\"96x96\" /\u003e\n\t\t\u003clink rel=\"icon\" type=\"image/svg+xml\" href=\"/static/favicon.svg\" /\u003e\n\t\t\u003clink rel=\"shortcut icon\" href=\"/static/favicon.ico\" /\u003e\n\t\t\u003clink rel=\"apple-touch-icon\" sizes=\"180x180\" href=\"/static/apple-touch-icon.png\" /\u003e\n\t\t\u003cmeta name=\"apple-mobile-web-app-title\" content=\"Open WebUI\" /\u003e\n\n\t\t\u003clink rel=\"manifest\" href=\"/manifest.json\" crossorigin=\"use-credentials\" /\u003e\n\t\t\u003cmeta\n\t\t\tname=\"viewport\"\n\t\t\tcontent=\"width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover\"\n\t\t/\u003e\n\t\t\u003cmeta name=\"theme-color\" content=\"#171717\" /\u003e\n\t\t\u003cmeta name=\"robots\" content=\"noindex,nofollow\" /\u003e\n\t\t\u003cmeta name=\"description\" content=\"Open WebUI\" /\u003e\n\t\t\u003clink\n\t\t\trel=\"search\"\n\t\t\ttype=\"application/opensearchdescription+xml\"\n\t\t\ttitle=\"Open WebUI\"\n\t\t\thref=\"/opensearch.xml\"\n\t\t/\u003e\n\t\t\u003cscript src=\"/static/loader.js\" defer\u003e\u003c/script\u003e\n\t\t\u003clink rel=\"stylesheet\" href=\"/static/custom.css\" /\u003e\n\n\t\t\u003cscript\u003e\n\t\t\tfunction resizeIframe(obj) {\n\t\t\t\tobj.style.height = obj.contentWindow.document.documentElement.scrollHeight + 'px';\n\t\t\t}\n\t\t\u003c/script\u003e\n\n\t\t\u003cscript\u003e\n\t\t\t// On page load or when changing themes, best to add inline in `head` to avoid FOUC\n\t\t\t(() =\u003e {\n\t\t\t\tconst metaThemeColorTag = document.querySelector('meta[name=\"theme-color\"]');\n\t\t\t\tconst prefersDarkTheme = window.matchMedia('(prefers-color-scheme: dark)').matches;\n\n\t\t\t\tif (!localStorage?.theme) {\n\t\t\t\t\tlocalStorage.theme = 'system';\n\t\t\t\t}\n\n\t\t\t\tif (localStorage.theme === 'system') {\n\t\t\t\t\tdocument.documentElement.classList.add(prefersDarkTheme ? 'dark' : 'light');\n\t\t\t\t\tmetaThemeColorTag.setAttribute('content', prefersDarkTheme ? '#171717' : '#ffffff');\n\t\t\t\t} else if (localStorage.theme === 'oled-dark') {\n\t\t\t\t\tdocument.documentElement.style.setProperty('--color-gray-800', '#101010');\n\t\t\t\t\tdocument.documentElement.style.setProperty('--color-gray-850', '#050505');\n\t\t\t\t\tdocument.documentElement.style.setProperty('--color-gray-900', '#000000');\n\t\t\t\t\tdocument.documentElement.style.setProperty('--color-gray-950', '#000000');\n\t\t\t\t\tdocument.documentElement.classList.add('dark');\n\t\t\t\t\tmetaThemeColorTag.setAttribute('content', '#000000');\n\t\t\t\t} else if (localStorage.theme === 'light') {\n\t\t\t\t\tdocument.documentElement.classList.add('light');\n\t\t\t\t\tmetaThemeColorTag.setAttribute('content', '#ffffff');\n\t\t\t\t} else if (localStorage.theme === 'her') {\n\t\t\t\t\tdocument.documentElement.classList.add('her');\n\t\t\t\t\tmetaThemeColorTag.setAttribute('content', '#983724');\n\t\t\t\t} else {\n\t\t\t\t\tdocument.documentElement.classList.add('dark');\n\t\t\t\t\tmetaThemeColorTag.setAttribute('content', '#171717');\n\t\t\t\t}\n\n\t\t\t\twindow.matchMedia('(prefers-color-scheme: dark)').addListener((e) =\u003e {\n\t\t\t\t\tif (localStorage.theme === 'system') {\n\t\t\t\t\t\tif (e.matches) {\n\t\t\t\t\t\t\tdocument.documentElement.classList.add('dark');\n\t\t\t\t\t\t\tdocument.documentElement.classList.remove('light');\n\t\t\t\t\t\t\tmetaThemeColorTag.setAttribute('content', '#171717');\n\t\t\t\t\t\t} else {\n\t\t\t\t\t\t\tdocument.documentElement.classList.add('light');\n\t\t\t\t\t\t\tdocument.documentElement.classList.remove('dark');\n\t\t\t\t\t\t\tmetaThemeColorTag.setAttribute('content', '#ffffff');\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t});\n\t\t\t\tconst isDarkMode = document.documentElement.classList.contains('dark');\n\n\t\t\t\tconst logo = document.createElement('img');\n\t\t\t\tlogo.id = 'logo';\n\t\t\t\tlogo.style =\n\t\t\t\t\t'position: absolute; width: auto; height: 6rem; top: 44%; left: 50%; transform: translateX(-50%); display:block;';\n\t\t\t\tlogo.src = isDarkMode ? '/static/splash-dark.png' : '/static/splash.png';\n\n\t\t\t\tdocument.addEventListener('DOMContentLoaded', function () {\n\t\t\t\t\tconst splash = document.getElementById('splash-screen');\n\t\t\t\t\tif (splash) splash.prepend(logo);\n\t\t\t\t});\n\t\t\t})();\n\t\t\u003c/script\u003e\n\n\t\t\u003ctitle\u003eOpen WebUI\u003c/title\u003e\n\n\t\t\n\t\t\u003clink rel=\"modulepreload\" href=\"/_app/immutable/entry/start.Bt_jfpYV.js\"\u003e\n\t\t\u003clink rel=\"modulepreload\" href=\"/_app/immutable/chunks/CZQc5Ykn.js\"\u003e\n\t\t\u003clink rel=\"modulepreload\" href=\"/_app/immutable/chunks/BCvnKofF.js\"\u003e\n\t\t\u003clink rel=\"modulepreload\" href=\"/_app/immutable/entry/app.CisJy3PU.js\"\u003e\n\t\t\u003clink rel=\"modulepreload\" href=\"/_app/immutable/chunks/C1FmrZbK.js\"\u003e\n\t\t\u003clink rel=\"modulepreload\" href=\"/_app/immutable/chunks/IHki7fMi.js\"\u003e\n\t\u003c/head\u003e\n\n\t\u003cbody data-sveltekit-preload-data=\"hover\"\u003e\n\t\t\u003cdiv style=\"display: contents\"\u003e\n\t\t\t\u003cscript\u003e\n\t\t\t\t{\n\t\t\t\t\t__sveltekit_m5vhec = {\n\t\t\t\t\t\tbase: \"\"\n\t\t\t\t\t};\n\n\t\t\t\t\tconst element = document.currentScript.parentElement;\n\n\t\t\t\t\tPromise.all([\n\t\t\t\t\t\timport(\"/_app/immutable/entry/start.Bt_jfpYV.js\"),\n\t\t\t\t\t\timport(\"/_app/immutable/entry/app.CisJy3PU.js\")\n\t\t\t\t\t]).then(([kit, app]) =\u003e {\n\t\t\t\t\t\tkit.start(app, element);\n\t\t\t\t\t});\n\t\t\t\t}\n\t\t\t\u003c/script\u003e\n\t\t\u003c/div\u003e\n\n\t\t\u003cdiv\n\t\t\tid=\"splash-screen\"\n\t\t\tstyle=\"position: fixed; z-index: 100; top: 0; left: 0; width: 100%; height: 100%\"\n\t\t\u003e\n\t\t\t\u003cstyle type=\"text/css\" nonce=\"\"\u003e\n\t\t\t\thtml {\n\t\t\t\t\toverflow-y: scroll !important;\n\t\t\t\t}\n\t\t\t\u003c/style\u003e\n\n\t\t\t\u003cdiv\n\t\t\t\tstyle=\"\n\t\t\t\t\tposition: absolute;\n\t\t\t\t\ttop: 33%;\n\t\t\t\t\tleft: 50%;\n\n\t\t\t\t\twidth: 24rem;\n\t\t\t\t\ttransform: translateX(-50%);\n\n\t\t\t\t\tdisplay: flex;\n\t\t\t\t\tflex-direction: column;\n\t\t\t\t\talign-items: center;\n\t\t\t\t\"\n\t\t\t\u003e\n\t\t\t\t\u003cimg\n\t\t\t\t\tid=\"logo-her\"\n\t\t\t\t\tstyle=\"width: auto; height: 13rem\"\n\t\t\t\t\tsrc=\"/static/splash.png\"\n\t\t\t\t\tclass=\"animate-pulse-fast\"\n\t\t\t\t/\u003e\n\n\t\t\t\t\u003cdiv style=\"position: relative; width: 24rem; margin-top: 0.5rem\"\u003e\n\t\t\t\t\t\u003cdiv\n\t\t\t\t\t\tid=\"progress-background\"\n\t\t\t\t\t\tstyle=\"\n\t\t\t\t\t\t\tposition: absolute;\n\t\t\t\t\t\t\twidth: 100%;\n\t\t\t\t\t\t\theight: 0.75rem;\n\n\t\t\t\t\t\t\tborder-radius: 9999px;\n\t\t\t\t\t\t\tbackground-color: #fafafa9a;\n\t\t\t\t\t\t\"\n\t\t\t\t\t\u003e\u003c/div\u003e\n\n\t\t\t\t\t\u003cdiv\n\t\t\t\t\t\tid=\"progress-bar\"\n\t\t\t\t\t\tstyle=\"\n\t\t\t\t\t\t\tposition: absolute;\n\t\t\t\t\t\t\twidth: 0%;\n\t\t\t\t\t\t\theight: 0.75rem;\n\t\t\t\t\t\t\tborder-radius: 9999px;\n\t\t\t\t\t\t\tbackground-color: #fff;\n\t\t\t\t\t\t\"\n\t\t\t\t\t\tclass=\"bg-white\"\n\t\t\t\t\t\u003e\u003c/div\u003e\n\t\t\t\t\u003c/div\u003e\n\t\t\t\u003c/div\u003e\n\n\t\t\t\u003c!-- \u003cspan style=\"position: absolute; bottom: 32px; left: 50%; margin: -36px 0 0 -36px\"\u003e\n\t\t\t\tFooter content\n\t\t\t\u003c/span\u003e --\u003e\n\t\t\u003c/div\u003e\n\t\u003c/body\u003e\n\u003c/html\u003e\n\n\u003cstyle type=\"text/css\" nonce=\"\"\u003e\n\thtml {\n\t\toverflow-y: hidden !important;\n\t}\n\n\t#splash-screen {\n\t\tbackground: #fff;\n\t}\n\n\thtml.dark #splash-screen {\n\t\tbackground: #000;\n\t}\n\n\thtml.her #splash-screen {\n\t\tbackground: #983724;\n\t}\n\n\t#logo-her {\n\t\tdisplay: none;\n\t}\n\n\t#progress-background {\n\t\tdisplay: none;\n\t}\n\n\t#progress-bar {\n\t\tdisplay: none;\n\t}\n\n\thtml.her #logo {\n\t\tdisplay: none;\n\t}\n\n\thtml.her #logo-her {\n\t\tdisplay: block;\n\t\tfilter: invert(1);\n\t}\n\n\thtml.her #progress-background {\n\t\tdisplay: block;\n\t}\n\n\thtml.her #progress-bar {\n\t\tdisplay: block;\n\t}\n\n\t@media (max-width: 24rem) {\n\t\thtml.her #progress-background {\n\t\t\tdisplay: none;\n\t\t}\n\n\t\thtml.her #progress-bar {\n\t\t\tdisplay: none;\n\t\t}\n\t}\n\n\t@keyframes pulse {\n\t\t50% {\n\t\t\topacity: 0.65;\n\t\t}\n\t}\n\n\t.animate-pulse-fast {\n\t\tanimation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;\n\t}\n\u003c/style\u003e\n",
+            "response_codes": [
+              "200"
+            ],
+            "retry_interval": 10,
+            "skip_tls_verify": null,
+            "url": "http://13.89.247.168"
+          },
+          "sensitive_attributes": [],
+          "private": "bnVsbA==",
+          "dependencies": [
+            "azurerm_linux_virtual_machine.openwebui",
+            "azurerm_network_interface.openwebui",
+            "azurerm_public_ip.openwebui",
+            "azurerm_resource_group.openwebui",
+            "azurerm_subnet.openwebui",
+            "azurerm_virtual_network.openwebui",
+            "data.azurerm_platform_image.openwebui",
+            "data.cloudinit_config.config",
+            "random_password.password"
+          ]
+        }
+      ]
+    }
+  ]
+}
