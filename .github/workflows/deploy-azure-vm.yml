@@ -1,15 +1,11 @@
 name: 🚀 Terraform Deploy to Azure
 
 on:
-  push:
-    branches:
-      - main
-  workflow_dispatch:
+  workflow_dispatch:  # Manual trigger only
 
 jobs:
   terraform:
     runs-on: ubuntu-latest
-    environment: production  # Optional: use if you've defined variables in an environment
 
     steps:
     - name: 📥 Checkout Code
@@ -18,31 +14,21 @@ jobs:
     - name: 🔐 Azure Login
       uses: azure/login@v1
       with:
-        client-id: ${{ secrets.ARM_CLIENT_ID }}
-        client-secret: ${{ secrets.ARM_CLIENT_SECRET }}
-        tenant-id: ${{ vars.ARM_TENANT_ID }}
-        subscription-id: ${{ vars.ARM_SUBSCRIPTION_ID }}
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
 
     - name: 🧰 Setup Terraform
       uses: hashicorp/setup-terraform@v2
       with:
         terraform_version: 1.6.0
 
-    - name: 🌍 Set Azure Env Vars for Terraform
-      run: |
-        echo "ARM_CLIENT_ID=${{ secrets.ARM_CLIENT_ID }}" >> $GITHUB_ENV
-        echo "ARM_CLIENT_SECRET=${{ secrets.ARM_CLIENT_SECRET }}" >> $GITHUB_ENV
-        echo "ARM_SUBSCRIPTION_ID=${{ vars.ARM_SUBSCRIPTION_ID }}" >> $GITHUB_ENV
-        echo "ARM_TENANT_ID=${{ vars.ARM_TENANT_ID }}" >> $GITHUB_ENV
-
     - name: 📦 Terraform Init
       run: terraform init
-      working-directory: ./terraform
+      working-directory: ./terraform-azure-vm
 
     - name: 📐 Terraform Plan
       run: terraform plan -out=tfplan
-      working-directory: ./terraform
+      working-directory: ./terraform-azure-vm
 
     - name: 🚀 Terraform Apply
       run: terraform apply -auto-approve tfplan
-      working-directory: ./terraform
+      working-directory: ./terraform-azure-vm
