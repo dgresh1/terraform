@@ -1,15 +1,21 @@
-name: 🚀 Terraform Deploy to Azure
+name: 🌍 Deploy Terraform to Azure
 
 on:
-  workflow_dispatch:  # Manual trigger only
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment (e.g., dev, staging, production)'
+        required: false
+        default: dev  # 👈 Default value if user doesn't specify
 
 jobs:
-  terraform:
+  deploy:
     runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
 
     steps:
-    - name: 📥 Checkout Code
-      uses: actions/checkout@v3
+    - name: 🧾 Show Selected Environment
+      run: echo "Deploying to ${{ github.event.inputs.environment }} environment"
 
     - name: 🔐 Azure Login
       uses: azure/login@v1
