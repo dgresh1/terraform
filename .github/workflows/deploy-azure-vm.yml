@@ -6,7 +6,7 @@ on:
       environment:
         description: 'Target environment (e.g., dev, staging, production)'
         required: false
-        default: dev  # 👈 Default value if user doesn't specify
+        default: dev
 
 jobs:
   deploy:
@@ -14,8 +14,8 @@ jobs:
     environment: ${{ github.event.inputs.environment }}
 
     steps:
-    - name: 🧾 Show Selected Environment
-      run: echo "Deploying to ${{ github.event.inputs.environment }} environment"
+    - name: 📥 Checkout Repository
+      uses: actions/checkout@v3
 
     - name: 🔐 Azure Login
       uses: azure/login@v1
