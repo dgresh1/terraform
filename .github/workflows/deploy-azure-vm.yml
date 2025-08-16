@@ -1,12 +1,10 @@
-name: Deploy Azure VM with Terraform
+name: 🚀 Terraform Deploy to Azure
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
-    inputs:
-      environment:
-        description: 'Environment to deploy (e.g., dev, staging, prod)'
-        required: true
-        default: 'dev'
 
 jobs:
   terraform:
@@ -19,26 +17,30 @@ jobs:
       ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
 
     steps:
-    - name: 📥 Checkout repository
+    - name: 📥 Checkout Code
       uses: actions/checkout@v3
 
-    - name: Setup Terraform
+    - name: 🔐 Azure Login
+      uses: azure/login@v1
+      with:
+        client-id: ${{ secrets.ARM_CLIENT_ID }}
+        tenant-id: ${{ secrets.ARM_TENANT_ID }}
+        subscription-id: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+        client-secret: ${{ secrets.ARM_CLIENT_SECRET }}
+
+    - name: 🧰 Setup Terraform
       uses: hashicorp/setup-terraform@v2
       with:
         terraform_version: 1.6.0
 
     - name: 📦 Terraform Init
-      working-directory: terraform-azure-vm
       run: terraform init
+      working-directory: ./terraform
 
-    - name: 🔍 Terraform Validate
-      working-directory: terraform-azure-vm
-      run: terraform validate
-
-    - name: 📊 Terraform Plan
-      working-directory: terraform-azure-vm
-      run: terraform plan -var="environment=${{ github.event.inputs.environment }}"
+    - name: 📐 Terraform Plan
+      run: terraform plan -out=tfplan
+      working-directory: ./terraform
 
     - name: 🚀 Terraform Apply
-      working-directory: terraform-azure-vm
-      run: terraform apply -auto-approve -var="environment=${{ github.event.inputs.environment }}"
+      run: terraform apply -auto-approve tfplan
+      working-directory: ./terraform
