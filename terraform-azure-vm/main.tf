@@ -132,15 +132,6 @@ resource "azurerm_linux_virtual_machine" "mtc-vm" {
     sku       = "server"
     version   = "latest"
   }
-
-  provisioner "local-exec" {
-    command = templatefile("${var.host_os}-ssh-script.tpl", {
-      hostname     = self.public_ip_address,
-      user         = "adminuser",
-      identityfile = "~/.ssh/id_rsa.pem"
-    })
-    interpreter = var.host_os == "windows" ? ["Powershell", "-Command"] : ["bash", "-c"]
-  }
 }
 
 data "azurerm_public_ip" "mtc-ip-data" {
