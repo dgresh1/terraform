@@ -128,10 +128,11 @@ resource "azurerm_linux_virtual_machine" "mtc-vm" {
 
   source_image_reference {
     publisher = "Canonical"
-    offer     = "ubuntu-25_04"
-    sku       = "server"
+    offer     = "0001-com-ubuntu-server-jammy"
+    sku       = "22_04-lts"
     version   = "latest"
   }
+
 }
 
 data "azurerm_public_ip" "mtc-ip-data" {
